@@ -5,23 +5,38 @@
     ],
     "parts": [
         {
-            "ID": "Part 1",
-            "Name": "Name A",
+            "data":{
+                "ID": "Part 1",
+                "Name": "Name A"
+            },
             "parts": [
                 {
-                    "ID": "Part 3",
-                    "Name": "Name C",
+                    "data":{
+                        "ID": "Part 3",
+                        "Name": "Name C"
+                    },
                     "parts": [
                         {
-                            "ID": "Part 4",
-                            "Name": "Name D"
+                            "data":{
+                                "ID": "Part 4",
+                                "Name": "Name D"
+                            }
                         }
+                    ],
+                    "quantities":[
+                        6
                     ]
                 },
                 {
-                    "ID": "Part 2",
-                    "Name": "Name B"
+                    "data":{
+                        "ID": "Part 2",
+                        "Name": "Name B"
+                    }
                 }
+            ],
+            "quantities":[
+                3,
+                8
             ]
         }
     ]
