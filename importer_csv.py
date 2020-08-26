@@ -1,35 +1,16 @@
 # -*- coding: utf-8 -*-
-import json
+import csv
 from item import Item
 
 class ImporterCSV():
     def __init__(self, model):
         self.model = model
+        self.rank_title = 'rank'
 
     def open(self, filename):
 
-        def recursion(part, parent=None):
-            
-            if parent is None:
-                self.model.insertRow(
-                    self.model.rowCount(),
-                    Item(part['data'], self.model.root)
-                )
-                parent = self.model.root.child(-1)
-            else:
-                self.model.insertRow(
-                    parent.child_count(),
-                    Item(part['data'], parent), 
-                    self.model.createIndex(parent.row(), 0, parent)
-                )
-                parent = parent.child(-1)
-            
-            if 'parts' in part.keys():
-                for part in part['parts']:
-                    recursion(part, parent)
-        
         with open(filename) as f:
-            json_data = json.load(f)
+            dicts = [ d for d in csv.DictReader(f) ]
         
         if self.model.columns.count() > 0:
             self.model.removeColumns(0, self.model.columnCount())
@@ -37,10 +18,35 @@ class ImporterCSV():
         if self.model.rowCount() > 0:
             self.model.removeRows(0, self.model.root.child_count())
         
-        self.model.insertColumns(0, json_data['columns'])
+        self.model.insertColumns( 0, list(dicts[0].keys()) )
 
-        for part in json_data['parts']:
-            recursion(part)
+        self.model.insertRow( self.model.rowCount(), Item(dicts[0], self.model.root) )
+
+        last = self.model.root.child(-1)
+
+        for part in dicts[1:]:
+
+            rank = int( part[self.rank_title] )
+            rank_deff = int( last.data(self.rank_title) ) - rank
+
+            if rank_deff < 0:
+                item = Item(part, last)
+                parent = self.model.createIndex(last.row(), 0, last)
+                row = last.child_count()
+                self.model.insertRow(row, item, parent)
+                last = last.child(-1)
+            else:
+                parent = self.parent(last, rank - 1 )
+                item = Item(part, parent)
+                row = parent.child_count()
+                parent_index = self.model.createIndex(item.parent.row(), 0, parent)
+                self.model.insertRow(row, item, parent_index)
+                last = parent.child(-1)
+
+    def parent(self, item, rank):
+        if int( item.data(self.rank_title) ) == rank:
+            return item
+        return self.parent(item.parent, rank)
 
     def save(self):
 

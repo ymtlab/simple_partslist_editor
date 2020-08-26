@@ -9,6 +9,7 @@ from delegate import Delegate
 from column import Column
 from settings_dialog import Settings
 from importer_json import ImporterJson
+from importer_csv import ImporterCSV
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, app):
@@ -19,19 +20,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.model = Model( self, Item(), Column() )
         self.importer_json = ImporterJson(self.model)
+        self.importer_csv = ImporterCSV(self.model)
 
         self.ui.treeView.setModel(self.model)
         self.ui.treeView.setItemDelegate(Delegate())
         self.ui.treeView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.treeView.customContextMenuRequested.connect(self.contextMenu)
 
-        self.ui.actionAddChild.triggered.connect(self.add_child)
-        self.ui.actionDelete.triggered.connect(self.delete_item)
-        self.ui.actionOpen.triggered.connect(self.open_json)
+        self.ui.actionAddChild.triggered.connect(self.append_child)
+        self.ui.actionDelete.triggered.connect(self.remove)
+        self.ui.actionImportJSON.triggered.connect(self.import_json)
+        self.ui.actionImportCSV.triggered.connect(self.import_csv)
         self.ui.actionSave.triggered.connect(self.save_json)
         self.ui.actionSettings.triggered.connect(self.show_settings_dialog)
-
-        self.open_json('data.json')
 
     def append_child(self):
         for index in self.ui.treeView.selectedIndexes()[::-1]:
@@ -47,10 +48,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu.addAction('Remove', self.remove)
         self.menu.exec( self.focusWidget().mapToGlobal(point) )
  
-    def open_json(self, filename=None):
-        if not filename is None:
-            self.importer_json.open(filename)
-        filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Save file', '', 'JSON File (*.json)')
+    def import_csv(self):
+        filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', '', 'CSV File (*.csv)')
+        if filename[0]:
+            self.importer_csv.open(filename[0])
+
+    def import_json(self):
+        filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', '', 'JSON File (*.json)')
         if filename[0]:
             self.importer_json.open(filename[0])
 

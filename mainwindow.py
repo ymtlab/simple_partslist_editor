@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mainwindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.14.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -17,6 +17,8 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName("verticalLayout")
         self.treeView = QtWidgets.QTreeView(self.centralwidget)
         self.treeView.setAlternatingRowColors(True)
@@ -26,10 +28,12 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.treeView)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 400, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 400, 27))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
+        self.menuImport = QtWidgets.QMenu(self.menuFile)
+        self.menuImport.setObjectName("menuImport")
         self.menuEdit = QtWidgets.QMenu(self.menubar)
         self.menuEdit.setObjectName("menuEdit")
         self.menuSettings = QtWidgets.QMenu(self.menubar)
@@ -38,8 +42,6 @@ class Ui_MainWindow(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-        self.actionOpen = QtWidgets.QAction(MainWindow)
-        self.actionOpen.setObjectName("actionOpen")
         self.actionSave = QtWidgets.QAction(MainWindow)
         self.actionSave.setObjectName("actionSave")
         self.actionAddChild = QtWidgets.QAction(MainWindow)
@@ -48,7 +50,13 @@ class Ui_MainWindow(object):
         self.actionDelete.setObjectName("actionDelete")
         self.actionSettings = QtWidgets.QAction(MainWindow)
         self.actionSettings.setObjectName("actionSettings")
-        self.menuFile.addAction(self.actionOpen)
+        self.actionImportJSON = QtWidgets.QAction(MainWindow)
+        self.actionImportJSON.setObjectName("actionImportJSON")
+        self.actionImportCSV = QtWidgets.QAction(MainWindow)
+        self.actionImportCSV.setObjectName("actionImportCSV")
+        self.menuImport.addAction(self.actionImportJSON)
+        self.menuImport.addAction(self.actionImportCSV)
+        self.menuFile.addAction(self.menuImport.menuAction())
         self.menuFile.addAction(self.actionSave)
         self.menuEdit.addAction(self.actionAddChild)
         self.menuEdit.addAction(self.actionDelete)
@@ -64,10 +72,12 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.menuImport.setTitle(_translate("MainWindow", "Import"))
         self.menuEdit.setTitle(_translate("MainWindow", "Edit"))
         self.menuSettings.setTitle(_translate("MainWindow", "Settings"))
-        self.actionOpen.setText(_translate("MainWindow", "Open"))
         self.actionSave.setText(_translate("MainWindow", "Save"))
         self.actionAddChild.setText(_translate("MainWindow", "Add child"))
         self.actionDelete.setText(_translate("MainWindow", "Delete"))
         self.actionSettings.setText(_translate("MainWindow", "Setting"))
+        self.actionImportJSON.setText(_translate("MainWindow", "JSON"))
+        self.actionImportCSV.setText(_translate("MainWindow", "CSV"))
