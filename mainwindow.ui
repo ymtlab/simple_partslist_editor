@@ -32,6 +32,18 @@
     </property>
     <item>
      <widget class="QTreeView" name="treeView">
+      <property name="contextMenuPolicy">
+       <enum>Qt::CustomContextMenu</enum>
+      </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
+      <property name="dragEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="dragDropMode">
+       <enum>QAbstractItemView::InternalMove</enum>
+      </property>
       <property name="alternatingRowColors">
        <bool>true</bool>
       </property>
@@ -65,14 +77,23 @@
      <addaction name="actionImportJSON"/>
      <addaction name="actionImportCSV"/>
     </widget>
-    <addaction name="menuImport"/>
+    <widget class="QMenu" name="menuExport">
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <addaction name="actionExportJSON"/>
+     <addaction name="actionExportCSV"/>
+    </widget>
+    <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
+    <addaction name="menuImport"/>
+    <addaction name="menuExport"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
      <string>Edit</string>
     </property>
-    <addaction name="actionAddChild"/>
+    <addaction name="actionAppendChild"/>
     <addaction name="actionDelete"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
@@ -91,7 +112,7 @@
     <string>Save</string>
    </property>
   </action>
-  <action name="actionAddChild">
+  <action name="actionAppendChild">
    <property name="text">
     <string>Add child</string>
    </property>
@@ -114,6 +135,21 @@
   <action name="actionImportCSV">
    <property name="text">
     <string>CSV</string>
+   </property>
+  </action>
+  <action name="actionExportJSON">
+   <property name="text">
+    <string>JSON</string>
+   </property>
+  </action>
+  <action name="actionExportCSV">
+   <property name="text">
+    <string>CSV</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open</string>
    </property>
   </action>
  </widget>

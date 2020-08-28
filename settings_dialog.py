@@ -18,14 +18,17 @@ class Settings(QtWidgets.QDialog):
         self.ui.listView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.listView.customContextMenuRequested.connect(self.context_menu)
 
-        self.model.insertRows( 0, [ Item( {'column':column}, self.model.root ) for column in columns ] )
+        self.model.insertRows( 0, len(columns) )
+        for row, column in enumerate(columns):
+            index = self.model.index(row, 0)
+            self.model.setData(index, column)
 
     def append(self):
-        self.model.insertRow( self.model.rowCount(), Item({'column':''}, self.model.root) )
+        self.model.insertRow( self.model.rowCount(), Item({'column':''}, self.model.root()) )
 
     def columns(self):
         result = self.exec()
-        columns = [ item.data('column') for item in self.model.root.children ]
+        columns = [ item.data('column') for item in self.model.root().children() ]
         return (columns, result == QtWidgets.QDialog.Accepted)
         
     def context_menu(self, point):

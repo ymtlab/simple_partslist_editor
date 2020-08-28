@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import csv
 import json
 import sys
 from PyQt5 import QtWidgets, QtCore
@@ -24,23 +25,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.treeView.setModel(self.model)
         self.ui.treeView.setItemDelegate(Delegate())
-        self.ui.treeView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.treeView.customContextMenuRequested.connect(self.contextMenu)
 
-        self.ui.actionAddChild.triggered.connect(self.append_child)
+        self.ui.actionAppendChild.triggered.connect(self.append_child)
         self.ui.actionDelete.triggered.connect(self.remove)
         self.ui.actionImportJSON.triggered.connect(self.import_json)
         self.ui.actionImportCSV.triggered.connect(self.import_csv)
-        self.ui.actionSave.triggered.connect(self.save_json)
+        self.ui.actionExportJSON.triggered.connect(self.export_json)
+        self.ui.actionExportCSV.triggered.connect(self.export_csv)
         self.ui.actionSettings.triggered.connect(self.show_settings_dialog)
+        self.ui.actionOpen.triggered.connect(self.open)
+        self.ui.actionSave.triggered.connect(self.save)
 
     def append_child(self):
-        for index in self.ui.treeView.selectedIndexes()[::-1]:
-            self.model.insertRow(
-                self.model.item(index).child_count(), 
-                Item( {}, index.internalPointer() ), 
-                index
-            )
+        indexes = self.ui.treeView.selectedIndexes()
+        if len(indexes) == 0:
+            self.model.insertRow(1)
+            return
+        for index in indexes[::-1]:
+            self.model.insertRow(1, index)
 
     def contextMenu(self, point):
         self.menu = QtWidgets.QMenu(self)
@@ -62,18 +65,69 @@ class MainWindow(QtWidgets.QMainWindow):
         for index in self.ui.treeView.selectedIndexes()[::-1]:
             self.model.removeRow(index.row(), index.parent())
 
-    def save_json(self):
+    def export_json(self):
         data = self.importer_json.save()
-        filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save file', '', 'JSON File (*.json)')
+        filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save JSON file', '', 'JSON File (*.json)')
         if filename[0]:
             json.dump(data, open(filename[0],'w'), indent=4)
 
+    def export_csv(self):
+        data = self.importer_csv.save()
+        filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save CSV file', '', 'CSV File (*.csv)')
+        if filename[0]:
+            with open(filename[0], 'w', newline='') as f:
+                writer = csv.DictWriter(f, data[0].keys())
+                writer.writeheader()
+                for row in data:
+                    writer.writerow(row)
+
+    def open(self):
+        filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', '', 'DAT File (*.dat)')
+        if not filename[0]:
+            return
+
+        if self.model.columnCount() > 0:
+            self.model.removeColumns(0, self.model.columnCount())
+        
+        if self.model.rowCount() > 0:
+            self.model.removeRows(0, self.model.root().child_count())
+        
+        with open(filename[0], 'rb') as f:
+            byte_array = QtCore.QByteArray( f.read() )
+            stream = QtCore.QDataStream(byte_array, QtCore.QIODevice.ReadOnly)
+            variant = QtCore.QVariant()
+            stream >> variant
+            self.model.root( variant.value() )
+
+            columns = self.model.root().child(0).data().keys()
+            self.model.insertColumns(0, len(columns))
+            for i, column in enumerate(columns):
+                self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
+
+    def save(self):
+        filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save DAT file', '', 'DAT File (*.dat)')
+        if not filename[0]:
+            return
+        byte_array = QtCore.QByteArray()
+        stream = QtCore.QDataStream(byte_array, QtCore.QIODevice.WriteOnly)
+        stream << QtCore.QVariant( self.model.root() )
+
+        with open(filename[0], 'wb') as f:
+            f.write(byte_array)
+
     def show_settings_dialog(self):
-        columns, result = Settings(self, self.model.columns.all()).columns()
+        
+        column_list = range( self.model.columnCount() )
+        columns = [ self.model.headerData(i, QtCore.Qt.Horizontal) for i in column_list ]
+        columns, result = Settings(self, columns).columns()
+
         if not result:
             return
+        
         self.model.removeColumns(0, self.model.columnCount())
-        self.model.insertColumns(0, columns)
+        self.model.insertColumns(0, len(columns))
+        for i, column in enumerate(columns):
+            self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

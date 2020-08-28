@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import csv
-from item import Item
+from PyQt5 import QtCore
 
 class ImporterCSV():
     def __init__(self, model):
@@ -12,17 +12,21 @@ class ImporterCSV():
         with open(filename) as f:
             dicts = [ d for d in csv.DictReader(f) ]
         
-        if self.model.columns.count() > 0:
+        if self.model.columnCount() > 0:
             self.model.removeColumns(0, self.model.columnCount())
         
         if self.model.rowCount() > 0:
-            self.model.removeRows(0, self.model.root.child_count())
+            self.model.removeRows(0, self.model.root().child_count())
         
-        self.model.insertColumns( 0, list(dicts[0].keys()) )
+        columns = list( dicts[0].keys() )
+        self.model.insertColumns(0, len(columns))
+        for i, column in enumerate(columns):
+            self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
 
-        self.model.insertRow( self.model.rowCount(), Item(dicts[0], self.model.root) )
-
-        last = self.model.root.child(-1)
+        self.model.insertRow( self.model.rowCount() )
+        index = self.model.index(self.model.rowCount(), 0)
+        last = self.model.item(index).child(-1)
+        last.data(dicts[0])
 
         for part in dicts[1:]:
 
@@ -30,34 +34,33 @@ class ImporterCSV():
             rank_deff = int( last.data(self.rank_title) ) - rank
 
             if rank_deff < 0:
-                item = Item(part, last)
                 parent = self.model.createIndex(last.row(), 0, last)
                 row = last.child_count()
-                self.model.insertRow(row, item, parent)
+                self.model.insertRow(row, parent)
                 last = last.child(-1)
+                last.data(part)
             else:
                 parent = self.parent(last, rank - 1 )
-                item = Item(part, parent)
                 row = parent.child_count()
-                parent_index = self.model.createIndex(item.parent.row(), 0, parent)
-                self.model.insertRow(row, item, parent_index)
+                parent_index = self.model.createIndex(parent.row(), 0, parent)
+                self.model.insertRow(row, parent_index)
                 last = parent.child(-1)
+                last.data(part)
 
     def parent(self, item, rank):
         if int( item.data(self.rank_title) ) == rank:
             return item
-        return self.parent(item.parent, rank)
+        return self.parent(item.parent(), rank)
 
     def save(self):
 
-        def recursion(parent):
-            data = { 'data' : parent.dict }
-            if parent.child_count() > 0:
-                data['parts'] = [ recursion(child) for child in parent.children ]
-            return data
+        def recursion(parent, data):
+            data.append( parent.data() )
+            for child in parent.children():
+                recursion(child, data)
         
-        parts = []
-        for child in self.model.root.children:
-            parts.append( recursion(child) )
+        data = []
+        for child in self.model.root().children():
+            recursion(child, data)
         
-        return {'columns':self.model.columns.all(), 'parts':parts}
+        return data
