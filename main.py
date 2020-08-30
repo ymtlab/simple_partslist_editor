@@ -37,6 +37,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.actionOpen.triggered.connect(self.open)
         self.ui.actionSave.triggered.connect(self.save)
 
+        self.ui.toolButton.clicked.connect(self.append_child)
+        self.ui.toolButton_2.clicked.connect(self.remove)
+
     def append_child(self):
         indexes = self.ui.treeView.selectedIndexes()
         if len(indexes) == 0:
@@ -49,6 +52,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu = QtWidgets.QMenu(self)
         self.menu.addAction('Append child', self.append_child)
         self.menu.addAction('Remove', self.remove)
+        self.menu.addAction('parent rows', self.parent_rows)
         self.menu.exec( self.focusWidget().mapToGlobal(point) )
  
     def import_csv(self):
@@ -99,10 +103,23 @@ class MainWindow(QtWidgets.QMainWindow):
             stream >> variant
             self.model.root( variant.value() )
 
-            columns = self.model.root().child(0).data().keys()
-            self.model.insertColumns(0, len(columns))
-            for i, column in enumerate(columns):
-                self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
+        columns = self.model.root().child(0).data().keys()
+        self.model.insertColumns(0, len(columns))
+        for i, column in enumerate(columns):
+            self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
+        
+        def recursion(item):
+            index1 = self.model.createIndex(item.row(), 0, item)
+            index2 = self.model.createIndex(item.row(), len(item.data()), item)
+            self.model.dataChanged.emit(index1, index2)
+            for child in item.children():
+                recursion(child)
+        recursion(self.model.root())
+
+    def parent_rows(self):
+        indexes = self.ui.treeView.selectedIndexes()
+        for index in indexes:
+            print( self.model.parent_rows(index.internalPointer()) )
 
     def save(self):
         filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save DAT file', '', 'DAT File (*.dat)')

@@ -11,11 +11,14 @@ class Item(object):
         self.__children__.append( Item({}, self) )
         self.__quantities__.append(quantity)
 
-    def copy(self, parent=None):
-        item = Item({}, parent)
-        item.__data__ = { key:self.__data__[key] for key in self.__data__ }
-        item.__children__ = [ c.copy(item) for c in self.__children__ ]
-        item.__quantities__ = [ q for q in self.__quantities__ ]
+    def copy(self, item, parent=None):
+        if parent is None:
+            item.parent(self.parent)
+        else:
+            item.parent(parent)
+        item.data( { key:self.__data__[key] for key in self.__data__ } )
+        item.children( [ c.copy(item) for c in self.__children__ ] )
+        item.quantities( [ q for q in self.__quantities__ ] )
         return item
 
     def child(self, row):
@@ -27,6 +30,9 @@ class Item(object):
     def children(self, row=None, count=None):
         if row is None:
             return self.__children__
+        if type(row) is list:
+            self.__children__ = row
+            return
         return self.__children__[row:row+count]
 
     def data(self, key=None, value=None):
@@ -68,6 +74,16 @@ class Item(object):
             return self.__parent__
         self.__parent__ = item
 
+    def parent_rows(self):
+        def recursion(item):
+            if item.parent() is None:
+                return
+            rows.append( item.row() )
+            recursion( item.parent() )
+        rows = []
+        recursion(self)
+        return rows[::-1]
+
     def pop(self, row, count=1):
         d = self.__children__[row:row+count]
         q = self.__quantities__[row:row+count]
@@ -86,5 +102,17 @@ class Item(object):
 
     def row(self):
         if self.parent():
-            return self.parent().children().index(self)
+            if self in self.parent().children():
+                return self.parent().children().index(self)
         return 0
+
+    def same(self, item=None):
+        if not self.data() == item.data():
+            return False
+        if not self.quantities() == item.quantities():
+            return False
+        if not self.parent() == item.parent():
+            return False
+        if not self.children() == item.children():
+            return False
+        return True
