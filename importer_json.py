@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 import json
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 
 class ImporterJson():
-    def __init__(self, model):
+    def __init__(self, parent, model):
+        self.parent = parent
         self.model = model
+        self.quantities_title = 'quantities'
+        
+    def open(self):
 
-    def open(self, filename):
+        filename = QtWidgets.QFileDialog.getOpenFileName(self.parent, 'Open file', '', 'JSON File (*.json)')
+        if not filename[0]:
+            return
 
         def recursion(part, item=None):
             if item is None:
@@ -24,7 +30,7 @@ class ImporterJson():
                 for part in part['parts']:
                     recursion(part, parent)
         
-        with open(filename) as f:
+        with open(filename[0]) as f:
             json_data = json.load(f)
         
         if self.model.columnCount() > 0:
@@ -43,23 +49,6 @@ class ImporterJson():
 
     def save(self):
 
-        '''
-        def recursion(parent):
-            data = { 'data' : parent.dict }
-            if parent.child_count() > 0:
-                data['parts'] = [ recursion(child) for child in parent.children() ]
-            return data
-        
-        parts = []
-        for child in self.model.root.children():
-            parts.append( recursion(child) )
-        
-        return {'columns':self.model.columns.all(), 'parts':parts}
-        '''
-
-
-
-        
         def recursion(parent):
             data = { 'data' : parent.data() }
             if parent.child_count() > 0:
@@ -70,4 +59,8 @@ class ImporterJson():
         for child in self.model.root().children():
             parts.append( recursion(child) )
         
-        return {'columns':self.model.columns.data(), 'parts':parts}
+        data = {'columns' : self.model.columns().data(), 'parts' : parts}
+        
+        filename = QtWidgets.QFileDialog.getSaveFileName(self.parent, 'Save JSON file', '', 'JSON File (*.json)')
+        if filename[0]:
+            json.dump(data, open(filename[0],'w'), indent=4)

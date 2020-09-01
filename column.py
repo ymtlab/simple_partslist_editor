@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 class Column():
-    def __init__(self, data=[]):
-        self.__data__ = data
+    def __init__(self):
+        self.__data__ = []
 
     def append(self, column=''):
         self.__data__.append(column)

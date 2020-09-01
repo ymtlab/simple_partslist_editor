@@ -6,8 +6,9 @@ class Model(QtCore.QAbstractItemModel):
     def __init__(self, parent, root, columns):
         super(Model, self).__init__(parent)
         self.__root__ = root
-        self.columns = columns
+        self.__columns__ = columns
         self.mimeTypeString = 'application/vnd.treeviewdragdrop.list'
+        self.quantities_title = 'quantity'
 
     def canDropMimeData(self, data, action, row, column, parent):
         if not data.hasFormat(self.mimeTypeString):
@@ -21,13 +22,25 @@ class Model(QtCore.QAbstractItemModel):
         return True
 
     def columnCount(self, parent=QModelIndex()):
-        return self.columns.count()
+        return self.__columns__.count()
+
+    def columns(self):
+        return self.__columns__
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return QVariant()
         if role == Qt.EditRole or role == Qt.DisplayRole:
-            return self.item(index).data( self.columns.data(index.column()) )
+
+            if index == QModelIndex():
+                item = self.__root__
+            else:
+                item = index.internalPointer()
+            
+            if self.__columns__.data(index.column()) == self.quantities_title:
+                return item.quantity()
+            else:
+                return item.data( self.__columns__.data(index.column()) )
         return QVariant()
 
     def dropMimeData(self, data, action, row, column, parent):
@@ -54,7 +67,11 @@ class Model(QtCore.QAbstractItemModel):
             mime_datas.append( variant.value() )
 
         for parent_rows in mime_datas:
-            sourceParent = self.parent_rows_to_index(parent_rows).parent()
+
+            item = self.__root__.child(parent_rows)
+            index = self.createIndex(parent_rows[-1], 0, item)
+            sourceParent = index.parent()
+
             sourceRow = parent_rows[-1]
             self.moveRow(sourceParent, sourceRow, parent, destinationChild)
 
@@ -63,33 +80,36 @@ class Model(QtCore.QAbstractItemModel):
     def flags(self, index):
         if index.isValid():
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
-        return Qt.ItemIsEnabled
+        return Qt.NoItemFlags
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.columns.data(section)
+            return self.__columns__.data(section)
         
         if orientation == Qt.Vertical and role == Qt.DisplayRole:
             return section + 1
 
+        return None
+        
     def index(self, row, column, parent=QModelIndex()):
-        if not self.hasIndex(row, column, parent):
-            return QModelIndex()
+        if not parent.isValid() or parent == QModelIndex():
+            parent_item = self.__root__
+        else:
+            parent_item = parent.internalPointer()
+        
+        child_item = parent_item.child(row)
 
-        if parent == QModelIndex():
-            return self.createIndex( row, column, self.__root__.child(row) )
-
-        if parent.isValid():
-            return self.createIndex( row, column, self.item(parent).child(row) )
-
-        return QModelIndex()
+        if child_item:
+            return self.createIndex(row, column, child_item)
+        else:
+            return QtCore.QModelIndex()
 
     def insertColumn(self, column, parent=QModelIndex()):
         self.insertColumns(column, 1, parent)
 
     def insertColumns(self, column, count, parent=QModelIndex()):
         self.beginInsertColumns(parent, column, column + count - 1)
-        self.columns.insert(column, count)
+        self.__columns__.insert(column, count)
         self.endInsertColumns()
 
     def insertRow(self, row, parent=QModelIndex()):
@@ -97,16 +117,13 @@ class Model(QtCore.QAbstractItemModel):
 
     def insertRows(self, row, count, parent=QModelIndex()):
         self.beginInsertRows(parent, row, row + count - 1)
-        self.item(parent).insert(row, count)
+        if parent == QModelIndex():
+            item = self.__root__
+        else:
+            item = parent.internalPointer()
+        item.insert(row, count)
         self.endInsertRows()
 
-    def item(self, index):
-        if index == QModelIndex() or index is None:
-            return self.__root__
-        elif index.isValid():
-            return index.internalPointer()
-        return QModelIndex()
-        
     def mimeTypes(self):
         return [self.mimeTypeString]
 
@@ -115,7 +132,7 @@ class Model(QtCore.QAbstractItemModel):
         encoded_data = QtCore.QByteArray()
         stream = QtCore.QDataStream(encoded_data, QtCore.QIODevice.WriteOnly)
         for item in set([ index.internalPointer() for index in indexes ]):
-            stream << QtCore.QVariant(item.parent_rows())
+            stream << QtCore.QVariant( item.parent_rows() )
         mimedata.setData(self.mimeTypeString, encoded_data)
         return mimedata
 
@@ -124,33 +141,34 @@ class Model(QtCore.QAbstractItemModel):
 
     def moveRows(self, sourceParent, sourceRow, count, destinationParent, destinationChild):
 
+        if destinationParent == QModelIndex():
+            s_parent_item = self.__root__
+        else:
+            s_parent_item = sourceParent.internalPointer()
+        
+        if sourceParent == QModelIndex():
+            d_parent_item = self.__root__
+        else:
+            d_parent_item = destinationParent.internalPointer()
+        
         insert_row = destinationChild
-        source_rows = sourceParent.internalPointer().parent_rows()
-        destin_rows = destinationParent.internalPointer().parent_rows()
-
-        if source_rows == destin_rows:
-            sourceParent = destinationParent
-            s_parent_item = self.item(destinationParent)
+        if s_parent_item == d_parent_item:
             if sourceRow < destinationChild:
                 insert_row = insert_row - count
-        else:
-            s_parent_item = self.parent_rows_to_item(source_rows)
 
-        d_parent_item = self.item(destinationParent)
-
-        item_datas = []
-        for item in s_parent_item.children(sourceRow, count):
-            item_datas.append([ item.data(), item.children() ])
+        items = s_parent_item.children(sourceRow, count)
 
         self.beginMoveRows(sourceParent, sourceRow, sourceRow+count-1, destinationParent, destinationChild)
 
         s_parent_item.remove(sourceRow, count)
         d_parent_item.insert(insert_row, count)
 
-        for i, item_data in enumerate(item_datas):
-            d_parent_item.child(insert_row + i).data(item_data[0])
-            children = [ child.copy( d_parent_item.child(insert_row + i) ) for child in item_data[1] ]
-            d_parent_item.child(insert_row + i).children(children)
+        for i, item in enumerate(items):
+            d_parent_item.child(insert_row + i).data( item.data() )
+            d_parent_item.child(insert_row + i).children(
+                [c.copy( d_parent_item.child(insert_row + i) ) for c in item.children()]
+            )
+            d_parent_item.child(insert_row + i).quantities( item.quantities() )
 
         self.endMoveRows()
         return True
@@ -158,40 +176,18 @@ class Model(QtCore.QAbstractItemModel):
     def parent(self, index):
         if not index.isValid():
             return QModelIndex()
-        item = self.item(index)
-        if item.parent() == self.__root__:
+        item = index.internalPointer()
+        parent = item.parent()
+        if parent == self.__root__:
             return QModelIndex()
-        return self.createIndex(index.row(), 0, self.item(index).parent())
-
-    def parent_rows(self, item):
-        def recursion(item2):
-            if item2 is None:
-                return
-            rows.append( item2.row() )
-            recursion( item2.parent() )
-        rows = []
-        recursion(item)
-        return rows[:-1][::-1]
-
-    def parent_rows_to_index(self, rows):
-        item = self.root()
-        for row in rows:
-            item = item.child(row)
-        index = self.createIndex(rows[-1], 0, item)
-        return index
-
-    def parent_rows_to_item(self, rows):
-        item = self.root()
-        for row in rows:
-            item = item.child(row)
-        return item
+        return self.createIndex( parent.row(), 0, parent )
 
     def removeColumn(self, column, parent=QModelIndex()):
         self.removeColumns(column, 1, parent)
 
     def removeColumns(self, column, count, parent=QModelIndex()):
         self.beginRemoveColumns(parent, column, column + count - 1)
-        self.columns.remove(column, count)
+        self.__columns__.remove(column, count)
         self.endRemoveColumns()
 
     def removeRow(self, row, parent=QModelIndex()):
@@ -199,11 +195,19 @@ class Model(QtCore.QAbstractItemModel):
 
     def removeRows(self, row, count, parent=QModelIndex()):
         self.beginRemoveRows(parent, row, row + count - 1)
-        self.item(parent).remove(row, count)
+        if parent == QModelIndex():
+            item = self.__root__
+        else:
+            item = parent.internalPointer()
+        item.remove(row, count)
         self.endRemoveRows()
 
     def rowCount(self, parent=QModelIndex()):
-        return self.item(parent).child_count()
+        if not parent.isValid():
+            parent_item = self.__root__
+        else:
+            parent_item = parent.internalPointer()
+        return parent_item.child_count()
 
     def root(self, item=None):
         if item is None:
@@ -219,14 +223,27 @@ class Model(QtCore.QAbstractItemModel):
 
     def setData(self, index, value, role=Qt.EditRole):
         if role == Qt.EditRole:
-            self.item(index).data( self.columns.data(index.column()), value )
+
+            if index == QModelIndex():
+                item = self.__root__
+            else:
+                item = index.internalPointer()
+
+            if self.__columns__.data(index.column()) == self.quantities_title:
+                try:
+                    item.quantity( int(value) )
+                except:
+                    return False
+            else:
+                item.data( self.__columns__.data(index.column()), value )
             return True
         return False
 
     def setHeaderData(self, section, orientation, value, role=Qt.EditRole):
         if orientation==Qt.Horizontal and role==Qt.EditRole:
-            self.columns.data(section, value)
-        return True
+            self.__columns__.data(section, value)
+            return True
+        return False
 
     def supportedDropActions(self):
         return Qt.CopyAction | Qt.MoveAction

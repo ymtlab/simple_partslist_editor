@@ -71,6 +71,30 @@
        </widget>
       </item>
       <item>
+       <widget class="QToolButton" name="toolButton_3">
+        <property name="text">
+         <string>Expand all</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Key column</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -137,6 +161,7 @@
      </property>
      <addaction name="actionImportJSON"/>
      <addaction name="actionImportCSV"/>
+     <addaction name="actionImpoertImage"/>
     </widget>
     <widget class="QMenu" name="menuExport">
      <property name="title">
@@ -168,6 +193,21 @@
    <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="dockWidget">
+   <property name="windowTitle">
+    <string>Part view</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="GraphicsView" name="graphicsView"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
@@ -213,7 +253,19 @@
     <string>Open</string>
    </property>
   </action>
+  <action name="actionImpoertImage">
+   <property name="text">
+    <string>Image</string>
+   </property>
+  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicsView</class>
+   <extends>QGraphicsView</extends>
+   <header location="global">graphics_view</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

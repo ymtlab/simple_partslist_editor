@@ -12,19 +12,21 @@ class Settings(QtWidgets.QDialog):
         
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.model = Model( self, Item(), Column(['column']) )
+        self.model = Model( self, Item(), Column() )
         self.ui.listView.setModel(self.model)
         self.ui.listView.setItemDelegate( Delegate() )
         self.ui.listView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.listView.customContextMenuRequested.connect(self.context_menu)
 
+        self.model.insertColumn(0)
+        self.model.setHeaderData(0, QtCore.Qt.Horizontal, 'column')
         self.model.insertRows( 0, len(columns) )
         for row, column in enumerate(columns):
             index = self.model.index(row, 0)
             self.model.setData(index, column)
 
     def append(self):
-        self.model.insertRow( self.model.rowCount(), Item({'column':''}, self.model.root()) )
+        self.model.insertRow( self.model.rowCount() )
 
     def columns(self):
         result = self.exec()
