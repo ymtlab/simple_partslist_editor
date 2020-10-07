@@ -8,7 +8,7 @@ class Model(QtCore.QAbstractItemModel):
         self.__root__ = root
         self.__columns__ = columns
         self.mimeTypeString = 'application/vnd.treeviewdragdrop.list'
-        self.quantities_title = 'quantity'
+        self.quantities_key = 'quantity'
 
     def canDropMimeData(self, data, action, row, column, parent):
         if not data.hasFormat(self.mimeTypeString):
@@ -37,7 +37,7 @@ class Model(QtCore.QAbstractItemModel):
             else:
                 item = index.internalPointer()
             
-            if self.__columns__.data(index.column()) == self.quantities_title:
+            if self.__columns__.data(index.column()) == self.quantities_key:
                 return item.quantity()
             else:
                 return item.data( self.__columns__.data(index.column()) )
@@ -76,6 +76,16 @@ class Model(QtCore.QAbstractItemModel):
             self.moveRow(sourceParent, sourceRow, parent, destinationChild)
 
         return True
+
+    def emit_all(self):
+        def recursion(item):
+            for c in range(self.columnCount()):
+                index = self.createIndex(item.row(), c, item.parent())
+                self.dataChanged.emit(index, index)
+            for child in item.children():
+                recursion(child)
+        for child in self.root().children():
+            recursion(child)
 
     def flags(self, index):
         if index.isValid():
@@ -229,7 +239,7 @@ class Model(QtCore.QAbstractItemModel):
             else:
                 item = index.internalPointer()
 
-            if self.__columns__.data(index.column()) == self.quantities_title:
+            if self.__columns__.data(index.column()) == self.quantities_key:
                 try:
                     item.quantity( int(value) )
                 except:

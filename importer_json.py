@@ -3,10 +3,10 @@ import json
 from PyQt5 import QtCore, QtWidgets
 
 class ImporterJson():
-    def __init__(self, parent, model):
+    def __init__(self, parent):
         self.parent = parent
-        self.model = model
-        self.quantities_title = 'quantities'
+        self.model = parent.model
+        self.quantities_key = 'quantities'
         
     def open(self):
 

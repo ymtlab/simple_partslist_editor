@@ -1,66 +1,82 @@
 # -*- coding: utf-8 -*-
-import csv
-from PyQt5 import QtCore
 
-class ImporterCSV():
-    def __init__(self, model):
-        self.model = model
-        self.rank_title = 'rank'
+# Form implementation generated from reading ui file 'csv_importer.ui'
+#
+# Created by: PyQt5 UI code generator 5.13.0
+#
+# WARNING! All changes made in this file will be lost!
 
-    def open(self, filename):
 
-        with open(filename) as f:
-            dicts = [ d for d in csv.DictReader(f) ]
-        
-        if self.model.columnCount() > 0:
-            self.model.removeColumns(0, self.model.columnCount())
-        
-        if self.model.rowCount() > 0:
-            self.model.removeRows(0, self.model.root().child_count())
-        
-        columns = list( dicts[0].keys() )
-        self.model.insertColumns(0, len(columns))
-        for i, column in enumerate(columns):
-            self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-        self.model.insertRow( self.model.rowCount() )
-        index = self.model.index(self.model.rowCount(), 0)
-        last = self.model.item(index).child(-1)
-        last.data(dicts[0])
 
-        for part in dicts[1:]:
+class Ui_Dialog(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Dialog")
+        Dialog.resize(800, 600)
+        self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
+        self.verticalLayout.setContentsMargins(6, 6, 6, 6)
+        self.verticalLayout.setSpacing(6)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.gridLayout_2 = QtWidgets.QGridLayout()
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.pushButton = QtWidgets.QPushButton(Dialog)
+        self.pushButton.setObjectName("pushButton")
+        self.gridLayout_2.addWidget(self.pushButton, 0, 2, 1, 1)
+        self.label_5 = QtWidgets.QLabel(Dialog)
+        self.label_5.setObjectName("label_5")
+        self.gridLayout_2.addWidget(self.label_5, 0, 0, 1, 1)
+        self.lineEdit = QtWidgets.QLineEdit(Dialog)
+        self.lineEdit.setObjectName("lineEdit")
+        self.gridLayout_2.addWidget(self.lineEdit, 0, 1, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout_2)
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.gridLayout.setObjectName("gridLayout")
+        self.listView = QtWidgets.QListView(Dialog)
+        self.listView.setMaximumSize(QtCore.QSize(140, 16777215))
+        self.listView.setObjectName("listView")
+        self.gridLayout.addWidget(self.listView, 1, 0, 1, 1)
+        self.label = QtWidgets.QLabel(Dialog)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
+        self.listView_2 = QtWidgets.QListView(Dialog)
+        self.listView_2.setMaximumSize(QtCore.QSize(140, 16777215))
+        self.listView_2.setObjectName("listView_2")
+        self.gridLayout.addWidget(self.listView_2, 1, 1, 1, 1)
+        self.tableView = QtWidgets.QTableView(Dialog)
+        self.tableView.setObjectName("tableView")
+        self.gridLayout.addWidget(self.tableView, 1, 3, 1, 1)
+        self.label_2 = QtWidgets.QLabel(Dialog)
+        self.label_2.setObjectName("label_2")
+        self.gridLayout.addWidget(self.label_2, 0, 1, 1, 1)
+        self.label_4 = QtWidgets.QLabel(Dialog)
+        self.label_4.setObjectName("label_4")
+        self.gridLayout.addWidget(self.label_4, 0, 3, 1, 1)
+        self.label_3 = QtWidgets.QLabel(Dialog)
+        self.label_3.setObjectName("label_3")
+        self.gridLayout.addWidget(self.label_3, 0, 2, 1, 1)
+        self.listView_3 = QtWidgets.QListView(Dialog)
+        self.listView_3.setMaximumSize(QtCore.QSize(140, 16777215))
+        self.listView_3.setObjectName("listView_3")
+        self.gridLayout.addWidget(self.listView_3, 1, 2, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout)
+        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
 
-            rank = int( part[self.rank_title] )
-            rank_deff = int( last.data(self.rank_title) ) - rank
+        self.retranslateUi(Dialog)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
+        QtCore.QMetaObject.connectSlotsByName(Dialog)
 
-            if rank_deff < 0:
-                parent = self.model.createIndex(last.row(), 0, last)
-                row = last.child_count()
-                self.model.insertRow(row, parent)
-                last = last.child(-1)
-                last.data(part)
-            else:
-                parent = self.parent(last, rank - 1 )
-                row = parent.child_count()
-                parent_index = self.model.createIndex(parent.row(), 0, parent)
-                self.model.insertRow(row, parent_index)
-                last = parent.child(-1)
-                last.data(part)
-
-    def parent(self, item, rank):
-        if int( item.data(self.rank_title) ) == rank:
-            return item
-        return self.parent(item.parent(), rank)
-
-    def save(self):
-
-        def recursion(parent, data):
-            data.append( parent.data() )
-            for child in parent.children():
-                recursion(child, data)
-        
-        data = []
-        for child in self.model.root().children():
-            recursion(child, data)
-        
-        return data
+    def retranslateUi(self, Dialog):
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "CSV Importer"))
+        self.pushButton.setText(_translate("Dialog", "Open CSV"))
+        self.label_5.setText(_translate("Dialog", "CSV File Path"))
+        self.label.setText(_translate("Dialog", "Rank column"))
+        self.label_2.setText(_translate("Dialog", "Quantity column"))
+        self.label_4.setText(_translate("Dialog", "CSV view"))
+        self.label_3.setText(_translate("Dialog", "Key column"))

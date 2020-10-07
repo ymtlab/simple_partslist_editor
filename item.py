@@ -19,6 +19,11 @@ class Item(object):
         item.quantities( [ q for q in self.__quantities__ ] )
         return item
         
+    def copy_from(self, item):
+        self.__data__ = item.data()
+        self.__children__ = [ c.copy(self) for c in item.children() ]
+        self.__quantities__ = item.quantities()
+
     def child(self, row, item=None):
 
         if type(row) is list:

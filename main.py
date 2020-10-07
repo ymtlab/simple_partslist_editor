@@ -11,7 +11,8 @@ from delegate import Delegate
 from column import Column
 from settings_dialog import Settings
 from importer_json import ImporterJson
-from csv_importer_dialog import CSVimporterDialog
+from importer_csv_dialog import ImporterCSV
+from importer_image import importer_image
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, app):
@@ -27,25 +28,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.treeView.customContextMenuRequested.connect(self.contextMenu)
 
         self.ui.actionAppendChild.triggered.connect(self.append_child)
-        self.ui.actionDelete.triggered.connect(self.remove)
-        self.ui.actionImportJSON.triggered.connect(self.import_json)
-        self.ui.actionImportCSV.triggered.connect(self.import_csv)
-        self.ui.actionExportJSON.triggered.connect(self.export_json)
-        self.ui.actionExportCSV.triggered.connect(self.export_csv)
-        self.ui.actionSettings.triggered.connect(self.show_settings_dialog)
+        self.ui.actionDelete.triggered.connect(self.remove_items)
+        self.ui.actionImportJSON.triggered.connect( lambda : ImporterJson(self).open() )
+        self.ui.actionImportCSV.triggered.connect( lambda : ImporterCSV(self).exec() )
+        self.ui.actionExportJSON.triggered.connect( lambda : ImporterJson(self).save() )
+        self.ui.actionExportCSV.triggered.connect( lambda : ImporterCSV(self).save() )
+        self.ui.actionSettings.triggered.connect( lambda : Settings(self).exec() )
         self.ui.actionOpen.triggered.connect(self.open)
         self.ui.actionSave.triggered.connect(self.save)
-
+        self.ui.actionImpoertImage.triggered.connect( lambda : importer_image(self) )
+        
         self.ui.toolButton.clicked.connect(self.append_child)
-        self.ui.toolButton_2.clicked.connect(self.remove)
+        self.ui.toolButton_2.clicked.connect(self.remove_items)
         self.ui.toolButton_3.clicked.connect(self.ui.treeView.expandAll)
+        self.ui.toolButton_4.clicked.connect(self.search_and_replace)
 
         self.ui.treeView.clicked.connect(self.tree_view_clicked)
 
         self.partslist = {
             'root_item':self.model.root(), 
             'pixmaps':{}, 
-            'key_column':'part number'
+            'key_column':None,
+            'quantity_column':None
         }
 
     def append_child(self):
@@ -58,45 +62,92 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def contextMenu(self, point):
         self.menu = QtWidgets.QMenu(self)
-        self.menu.addAction('Append child', self.append_child)
-        self.menu.addAction('Remove', self.remove)
-        self.menu.addAction('Copy', self.copy)
-        self.menu.addAction('Paste', self.paste)
-        self.menu.addAction('Sum quantity with duplication parts', self.sum_quantity_with_duplication_parts)
-        self.menu.addAction('test', self.test)
+        
+        edit_data_menu = QtWidgets.QMenu('Edit data', self)
+        edit_data_menu.addAction('Copy data', self.copy_datas)
+        edit_data_menu.addAction('Paste data', self.paste_datas)
+        edit_data_menu.addAction('Input text to selected indexes', self.input_text_to_selectedindexes)
+        self.menu.addMenu(edit_data_menu)
+
+        edit_item_menu = QtWidgets.QMenu('Edit item', self)
+        edit_item_menu.addAction('Append child', self.append_child)
+        edit_item_menu.addAction('Remove item', self.remove_items)
+        edit_item_menu.addAction('Copy item', self.copy_items)
+        edit_item_menu.addAction('Paste item', self.paste_items)
+        self.menu.addMenu(edit_item_menu)
+        
+        sum_menu = QtWidgets.QMenu('Sum', self)
+        sum_menu.addAction('Sum quantity with duplication parts', self.sum_quantity_with_duplication_parts)
+        sum_menu.addAction('Sum quantity with duplication parts recursion', self.sum_quantity_with_duplication_parts_recursion)
+        self.menu.addMenu(sum_menu)
+
+        test_menu = QtWidgets.QMenu('Test', self)
+        test_menu.addAction('test', self.test)
+        test_menu.addAction('parent', self.print_parent)
+        test_menu.addAction('root children', self.root_children)
+        self.menu.addMenu(test_menu)
+
         self.menu.exec( self.focusWidget().mapToGlobal(point) )
 
-    def copy(self):
-        clipboard = QtWidgets.QApplication.clipboard()
-        mimedata = QtCore.QMimeData()
-        encoded_data = QtCore.QByteArray()
-        stream = QtCore.QDataStream(encoded_data, QtCore.QIODevice.WriteOnly)
+    def copy_datas(self):
 
         indexes = self.ui.treeView.selectedIndexes()
-        setted_items = set([index.internalPointer() for index in indexes])
-        for item in setted_items:
-            stream << QtCore.QVariant(item)
-        mimedata.setData(self.model.mimeTypeString, encoded_data)
+        first_index = indexes[0]
+        last_parent_item = first_index.internalPointer().parent()
+        last_row = first_index.row()
+        datas = [ [self.model.data(first_index)] ]
 
-        clipboard.setMimeData(mimedata)
+        for index in indexes[1:]:
+            
+            parent_item = index.internalPointer().parent()
 
-    def export_csv(self):
-        dialog = CSVimporterDialog(self, self.model)
-        dialog.save()
+            if parent_item is last_parent_item and index.row() == last_row:
+                datas[-1].append(self.model.data(index))
+                continue
 
-    def export_json(self):
-        importer_json = ImporterJson(self, self.model)
-        importer_json.save()
+            if not parent_item is last_parent_item:
+                last_parent_item = index.internalPointer().parent()
 
-    def import_csv(self):
-        dialog = CSVimporterDialog(self, self.model, self.partslist)
-        dialog.exec()
-        self.ui.comboBox.addItems(self.model.columns().data())
-        self.ui.comboBox.setCurrentText(self.partslist['key_column'])
+            if not index.row() is last_row:
+                last_row = index.row()
 
-    def import_json(self):
-        importer_json = ImporterJson(self, self.model)
-        importer_json.open()
+            datas.append([self.model.data(index)])
+        
+        text = '\n'.join(
+            [ '\t'.join([ cell for cell in row ]) for row in datas ]
+        )
+
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(text)
+        
+    def copy_items(self):
+
+        items = []
+        for index in self.ui.treeView.selectedIndexes():
+            item = index.internalPointer()
+            if not item in items:
+                items.append(item)
+
+        encoded_data = QtCore.QByteArray()
+        stream = QtCore.QDataStream(encoded_data, QtCore.QIODevice.WriteOnly)
+        for item in items:
+            stream << QtCore.QVariant( item.parent_rows() )
+        
+        mimedata = QtCore.QMimeData()
+        mimedata.setData('application/x-qabstractitemmodeldatalist', encoded_data)
+        QtWidgets.QApplication.clipboard().setMimeData(mimedata)
+
+    def input_text_to_selectedindexes(self):
+
+        text, ok = QtWidgets.QInputDialog().getText(
+            self, "Input text dialog",
+            "Input text", QtWidgets.QLineEdit.Normal,
+            "text"
+            )
+        
+        if ok and text:
+            for index in self.ui.treeView.selectedIndexes():
+                self.model.setData(index, text)
 
     def open(self):
         filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', '', 'DAT File (*.dat)')
@@ -127,78 +178,121 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model.root( self.partslist['root_item'] )
 
         # set columns
-        columns = list(self.model.root().child(0).data().keys())
-        self.model.insertColumns(0, len(columns))
+        columns = list( self.model.root().child(0).data().keys() )
+        self.model.insertColumns( 0, len(columns) )
         for i, column in enumerate(columns):
             self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
-            
-        # combox
-        self.ui.comboBox.addItems(columns)
+        
+        self.model.quantities_key = self.partslist['quantity_column']
 
-    def paste(self):
+    def paste_datas(self):
         clipboard = QtWidgets.QApplication.clipboard()
-        mime_data = clipboard.mimeData()
+        datas = [ [t for t in row.split('\t')] for row in clipboard.text().strip().splitlines() ]
 
-        encoded_data = mime_data.data(self.model.mimeTypeString)
+        indexes = self.ui.treeView.selectedIndexes()
+
+        if len(indexes) == 0:
+            return
+        
+        selected_index = indexes[0]
+        selected_item_parent = selected_index.internalPointer().parent()
+        start_row = selected_index.row()
+        start_column = selected_index.column()
+        max_column = self.model.columnCount()
+        max_row = selected_item_parent.child_count()
+
+        for r, data in enumerate(datas):
+            r2 = start_row + r
+            input_item = selected_item_parent.child(r2)
+            for c, d in enumerate(data):
+                c2 = start_column + c
+                if c2 > max_column:
+                    continue
+                if r2 > max_row:
+                    return
+                index = self.model.createIndex(r2, c2, input_item)
+                self.model.setData(index, d)
+
+    def paste_items(self):
+        mime_data = QtWidgets.QApplication.clipboard().mimeData()
+        encoded_data = mime_data.data('application/x-qabstractitemmodeldatalist')
         stream = QtCore.QDataStream(encoded_data, QtCore.QIODevice.ReadOnly)
 
-        items = []
+        data = []
         while not stream.atEnd():
             variant = QtCore.QVariant()
             stream >> variant
-            items.append( variant.value() )
+            data.append( variant.value() )
 
-        indexes = self.ui.treeView.selectedIndexes()
-        if len(indexes) < 1:
-            return
+        for item in data:
+            print(item)
+
+    def print_parent(self):
+        for index in self.ui.treeView.selectedIndexes():
+            print(index.internalPoitner().data(self.partslist['key_column']))
         
-        index = indexes[0]
-        for r, item in enumerate(items):
-            row = index.row() + 1 + r
-            self.model.insertRow( row, index.parent() )
-            inserted_item = index.parent().internalPointer().child(row)
-            children = inserted_item.children()
-            self.model.insertRows( row, len(children), index.parent() )
-            for r2, child in enumerate(children):
-                inserted_item.child( r2, child.copy(inserted_item) )
-            inserted_item.data( item.data() )
-            inserted_item.quantities( item.quantities() )
-
-    def remove(self):
+    def remove_items(self):
         for index in self.ui.treeView.selectedIndexes()[::-1]:
             self.model.removeRow(index.row(), index.parent())
             
+    def root_children(self):
+        print([ c.data('品番') for c in self.model.root().children() ])
+
     def save(self):
         filename = QtWidgets.QFileDialog.getSaveFileName(self, 'Save DAT file', '', 'DAT File (*.dat)')
         if not filename[0]:
             return
-        self.partslist['key_column'] = self.ui.comboBox.currentText()
+        
+        # get all columns
+        columns = []
+        def recursion(item):
+            columns.extend( list(item.data().keys()) )
+            for child in item.children():
+                recursion(child)
+        recursion(self.model.root())
+        columns = list(set(columns))
+        self.partslist['all_columns'] = columns
+        self.partslist['columns'] = self.model.columns().data()
+
         byte_array = QtCore.QByteArray()
         stream = QtCore.QDataStream(byte_array, QtCore.QIODevice.WriteOnly)
         stream << QtCore.QVariant( self.partslist )
         with open(filename[0], 'wb') as f:
             f.write(byte_array)
 
-    def show_settings_dialog(self):
-        
-        column_list = range( self.model.columnCount() )
-        columns = [ self.model.headerData(i, QtCore.Qt.Horizontal) for i in column_list ]
-        columns, result = Settings(self, columns).columns()
+    def search_and_replace(self):
 
-        if not result:
-            return
+        def recursion(item, search_text, replace_text, is_perfect_matching, search_column):
+            data = item.data()
+            for key in data:
+                text = data[key]
+                if is_perfect_matching:
+                    if text == search_text:
+                        data[key] = replace_text
+                else:
+                    data[key] = text.replace(search_text, replace_text)
+            for child in item.children():
+                recursion(child, search_text, replace_text, is_perfect_matching, search_column)
+
+        search_column = self.ui.comboBox.currentText()
+        search_text = self.ui.lineEdit.text()
+        replace_text = self.ui.lineEdit_2.text()
+
+        if self.ui.comboBox_2.currentText() == 'Perfect matching':
+            is_perfect_matching = True
+        else:
+            is_perfect_matching = False
         
-        self.model.removeColumns(0, self.model.columnCount())
-        self.model.insertColumns(0, len(columns))
-        for i, column in enumerate(columns):
-            self.model.setHeaderData(i, QtCore.Qt.Horizontal, column)
+        recursion( self.model.root(), search_text, replace_text, is_perfect_matching, search_column )
 
     def sum_quantity_with_duplication_parts(self):
         indexes = self.ui.treeView.selectedIndexes()
-        setted_items = set([index.internalPointer() for index in indexes])
-        key_column = self.ui.comboBox.currentText()
+        setted_items = set([ index.internalPointer() for index in indexes ])
+        key_column = self.partslist['key_column']
 
         for item in setted_items:
+            
+            parent_index = self.model.createIndex(item.row(), 0, item)
 
             # sum quantity
             delete_rows = []
@@ -213,50 +307,67 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # delete children
             for row in delete_rows[::-1]:
-                index = self.model.createIndex(row, 0, item)
-                self.model.removeRow(row, index)
+                self.model.removeRow(row, parent_index)
 
             # set quantities
             sorted_quantities = [ quantities[c.data(key_column)] for c in item.children() ]
             item.quantities(sorted_quantities)
 
+    def sum_quantity_with_duplication_parts_recursion(self):
+        def recursion(item):
+
+            parent_index = self.model.createIndex(item.row(), 0, item)
+
+            # sum quantity
+            delete_rows = []
+            quantities = {}
+            for row, child in enumerate(item.children()):
+                key = child.data(key_column)
+                if not key in quantities.keys():
+                    quantities[key] = 0
+                else:
+                    delete_rows.append(row)
+                quantities[key] += int( child.quantity() )
+
+            # delete children
+            for row in delete_rows[::-1]:
+                self.model.removeRow(row, parent_index)
+
+            # set quantities
+            sorted_quantities = [ quantities[c.data(key_column)] for c in item.children() ]
+            item.quantities(sorted_quantities)
+
+            for child in item.children():
+                recursion(child)
+
+        indexes = self.ui.treeView.selectedIndexes()
+        setted_items = set([ index.internalPointer() for index in indexes ])
+        key_column = self.partslist['key_column']
+
+        for item in setted_items:
+            recursion(item)
+
     def test(self):
         indexes = self.ui.treeView.selectedIndexes()
         for index in indexes:
-            print( index.internalPointer().quantities() )
-            print( index.internalPointer().quantity() )
-            print( index.internalPointer().row() )
+            item = index.internalPointer()
+            print('quantities')
+            print( item.quantities() )
+            print('quantity')
+            print( item.quantity() )
+            print('row')
+            print( item.row() )
 
-    def tree_ctrl_c(self, model, selectedIndexes):
-        preRow = selectedIndexes[0].internalPointer().row()
-        text = ''
-        
-        for selectedIndex in selectedIndexes:
-            row = selectedIndex.row()
-            #column = selectedIndex.column()
-            #selectedItem = selectedIndex.internalPointer()
-            
-            if not row == preRow:
-                text = text[:-1]
-                text = text + '\n'
-            
-            text = text + str(model.data(selectedIndex)) + '\t'
-            preRow = row
-        
-        text = text[:-1]
-        clipboard = QtWidgets.QApplication.clipboard()
-        clipboard.setText(text)
-        
     def tree_view_clicked(self, index):
         item = index.internalPointer()
-        key_column = self.ui.comboBox.currentText()
-        search_name = item.data(key_column)
+        search_name = item.data( self.partslist['key_column'] )
         if not search_name in self.partslist['pixmaps']:
             return
         scene = QtWidgets.QGraphicsScene()
         scene.addPixmap( QtGui.QPixmap( self.partslist['pixmaps'][search_name] ) )
         self.ui.graphicsView.setScene(scene)
         self.ui.graphicsView.fitInView(scene.sceneRect(), QtCore.Qt.KeepAspectRatio)
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
